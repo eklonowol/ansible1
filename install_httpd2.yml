@@ -1,0 +1,42 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+          - name: install apache & php, update  
+            package:
+                    name:
+                      - "{{ package_apache }}"
+                      - "{{ package_php }}"
+                    state: latest
+                    update_cache: yes
+
+          - name: permit traffic in default zone for http service
+            ansible.posix.firewalld:
+                    service: http
+                    permanent: yes
+                    state: enabled
+            when: ansible_distribution == "Rocky"
+
+          - name: permit traffic in default zone for https service
+            ansible.posix.firewalld:
+                    service: https
+                    permanent: yes
+                    state: enabled
+            when: ansible_distribution == "Rocky"
+
+          - name: Firewalld relaod
+            systemd:
+                    name: firewalld
+                    state: reloaded
+            when: ansible_distribution == "Rocky"
+
+          - name: Make sure a service unit is running
+            ansible.builtin.systemd:
+                    state: started
+                    name: httpd
+            when: ansible_distribution == "Rocky"
+
+
+
