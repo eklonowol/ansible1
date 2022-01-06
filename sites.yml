@@ -10,11 +10,22 @@
                     update_cache: yes
             when: ansible_distribution == "Ubuntu"
 
+          - name: upgrade all packages (Ubuntu)
+            apt:
+                    name: "*"
+                    state: latest
+            when: ansible_distribution == "Ubuntu"
 
           - name: install updates (Rocky)
             dnf:
                     update_only: yes
                     update_cache: yes
+            when: ansible_distribution == "Rocky"
+
+          - name: upgrade all packages (Rocky)
+            dnf:
+                    name: "*"
+                    state: latest
             when: ansible_distribution == "Rocky"
 
 - hosts: web_servers
