@@ -4,10 +4,10 @@
   become: true
   pre_tasks:
 
-          - name: install updates (Ubuntu)
+          - name: update repo cache (Ubuntu)
             apt:
-                    upgrade: dist
                     update_cache: yes
+            changed_when: false
             when: ansible_distribution == "Ubuntu"
 
           - name: upgrade all packages (Ubuntu)
@@ -16,10 +16,10 @@
                     state: latest
             when: ansible_distribution == "Ubuntu"
 
-          - name: install updates (Rocky)
+          - name: update repo cache (Rocky)
             dnf:
-                    update_only: yes
                     update_cache: yes
+            changed_when: false
             when: ansible_distribution == "Rocky"
 
           - name: upgrade all packages (Rocky)
@@ -27,6 +27,22 @@
                     name: "*"
                     state: latest
             when: ansible_distribution == "Rocky"
+
+
+- hosts: all
+  become: true
+  tasks:
+
+          - name: create simone user
+            tags: always
+            user:
+       
+          - name: add ssh key for simone
+            tags: always
+            authorized_key:
+                    user: simone
+                    key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBPnQWLs545epBEFYq+9wH6yMlcGebm3pbrvCv23dDN6 ansible"
+
 
 - hosts: workstations
   become: true
@@ -45,17 +61,10 @@
                     owner: root
                     group: root 
 
+
 - hosts: web_servers
   become: true
   tasks:
-
-          - name: install apache and php for Rocky servers 
-            dnf:
-                    name:
-                      - httpd
-                      - php
-                    state: latest
-            when: ansible_distribution == "Rocky"
 
           - name: permit traffic in default zone for http service
             ansible.posix.firewalld:
@@ -76,30 +85,56 @@
                     name: firewalld
                     state: reloaded
             when: ansible_distribution == "Rocky"
-
-          - name: Make sure a service unit is running
-            ansible.builtin.systemd:
-                    state: started
-                    name: httpd
-            when: ansible_distribution == "Rocky"
-
-
+             
           - name: install apache2 and php for Ubuntu servers
             apt:
                     name:
-                      - apache2
-                      - libapache2-mod-php
+                            - apache2
+                            - libapache2-mod-php
                     state: latest
             when: ansible_distribution == "Ubuntu"
 
-          - name: copy default html file for sites"
+          - name: install apache and php for Rocky servers
+            tags: apache,httpd,centos
+            dnf:
+                    name:
+                            - httpd
+                            - php
+                    state: latest
+            when: ansible_distribution == "Rocky" 
+
+          - name: start httpd (Rocky)
+            tags: apache, rocky, httpd
+            service:
+                    name: httpd
+                    state: started
+                    enabled: yes
+            when: ansible_distribution == "Rocky"
+             
+          - name: change email address for admin
+            tags: apache,rocky,httpd
+            lineinfile:
+                    path: /etc/httpd/conf/httpd.conf
+                    regexp: '^ServerAdmin'
+                    line: ServerAdmin somebody@somewhere.net
+            when: ansible_distribution == "Rocky"
+            register: httpd
+             
+          - name: restart httpd (Rocky)
+            tags: apache,rocky,httpd
+            service:
+                    name: httpd
+                    state: restarted
+            when: httpd.changed
+
+          - name: copy default html file for sites
             tags: apache,apache2,httpd
             copy:
-                src: default_site.html
-                dest: /var/www/html/index.html
-                owner: root
-                group: root
-                mode: 0644
+                    src: default_site.html
+                    dest: /var/www/html/index.html
+                    owner: root
+                    group: root
+                    mode: 0644
 
 
 - hosts: db_servers
@@ -122,8 +157,8 @@
 - hosts: file_servers
   become: true
   tasks:
-
           - name: install samba package
+            tags: samba
             package:
                     name: samba
                     state: latest
