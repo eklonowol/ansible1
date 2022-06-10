@@ -1,3 +1,3 @@
-# ansible_tutorial
+# ansible_project
 
 My first Ansible repo :)
